@@ -5,12 +5,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     atomicparsley \
     ca-certificates \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp (pinned to a stable release, update as needed)
 RUN pip install --no-cache-dir \
     yt-dlp \
-    PyYAML
+    PyYAML \
+    mutagen
 
 COPY scripts/sync.py /app/sync.py
 
