@@ -49,3 +49,26 @@ data:
       # Full URL also works:
       # - name: "Tech Reviews"
       #   url: "https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxxxx"
+
+    # -------------------------------------------------------------------------
+    # YouTube Music Playlists (audio-only, goes to Jellyfin Music library)
+    # Each playlist is downloaded into:
+    #   <music_root>/YouTube Music/<name>/
+    # as opus files (YouTube's native audio codec — no re-encoding).
+    #
+    # Use YouTube Music playlist URLs (music.youtube.com) or regular
+    # youtube.com playlist IDs — both work with yt-dlp.
+    # Private playlists require cookies (same secret as above).
+    # -------------------------------------------------------------------------
+    music_playlists:
+      - name: "My Music Mix"
+        id: "PLxxxxxxxxxxxxxxxxxx"
+
+      # - name: "Liked Music"
+      #   id: "LM"
+
+      # Full YouTube Music URL also works:
+      # - name: "Workout Mix"
+      #   url: "https://music.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxxxx"
+        - name: "Fingerstyle"
+          url: https://music.youtube.com/playlist?list=PLkLzHrXlITEUAaJEzvnq3pERxn-JM4BC6

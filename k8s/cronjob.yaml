@@ -42,6 +42,9 @@ spec:
                 # Videos land at /media/YouTube Channels/<name>/ etc.
                 - name: MEDIA_ROOT
                   value: /media
+                # Music lands at /music/YouTube Music/<name>/
+                - name: MUSIC_ROOT
+                  value: /music
                 # Archive files persist here between runs
                 - name: ARCHIVE_DIR
                   value: /archive
@@ -59,6 +62,8 @@ spec:
                   readOnly: true
                 - name: media
                   mountPath: /media
+                - name: music
+                  mountPath: /music
                 - name: archive
                   mountPath: /archive
                 - name: cookies
@@ -81,6 +86,10 @@ spec:
             - name: media
               persistentVolumeClaim:
                 claimName: yt-sync-videos-nfs-pvc
+
+            - name: music
+              persistentVolumeClaim:
+                claimName: yt-sync-music-nfs-pvc
 
             - name: archive
               persistentVolumeClaim:

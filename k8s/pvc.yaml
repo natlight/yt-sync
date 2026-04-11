@@ -1,4 +1,23 @@
 ---
+# PVC for the NFS music share.
+# Audio files land here under: YouTube Music/<playlist-name>/
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yt-sync-music-nfs-pvc
+  namespace: media
+  labels:
+    app: yt-sync
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 200Gi
+  volumeName: yt-sync-music-nfs-pv
+
+---
 # PVC for the NFS videos share.
 # Downloaded videos land here under:
 #   YouTube Channels/<channel-name>/

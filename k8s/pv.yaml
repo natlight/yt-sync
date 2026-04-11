@@ -1,4 +1,25 @@
 ---
+# PersistentVolume: NFS share pointing at /mnt/server/media/music on the NAS.
+# YouTube Music playlists download here as audio-only opus files.
+# Add this as a Music library in Jellyfin pointing at /music/YouTube Music.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: yt-sync-music-nfs-pv
+  labels:
+    app: yt-sync
+spec:
+  capacity:
+    storage: 200Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-client
+  nfs:
+    server: 192.168.50.187
+    path: /mnt/server/media/music
+
+---
 # PersistentVolume: NFS share pointing at /mnt/server/media/videos on the NAS.
 # This is the same NFS server used by Jellyfin, Radarr, and Sonarr.
 # We mount a sub-path so YouTube content lives alongside movies/tv in the media tree

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-yt-sync: Download new YouTube channel and playlist videos to Jellyfin.
+yt-sync: Download new YouTube channel/playlist videos and music playlists to Jellyfin.
 
-Reads a YAML config (mounted via ConfigMap) listing channels and playlists.
-Uses yt-dlp with SponsorBlock to remove ads/sponsor segments.
-Tracks downloaded videos via archive files so re-runs only fetch new content.
+Reads a YAML config (mounted via ConfigMap) listing channels, playlists, and
+music playlists. Uses yt-dlp with SponsorBlock to remove ads/sponsor segments.
+Tracks downloaded items via archive files so re-runs only fetch new content.
 """
 
 import os
@@ -17,22 +17,27 @@ import yaml
 
 def sanitize_name(name: str) -> str:
     """Make a name safe for use as a directory name."""
-    # Replace characters that are problematic on most filesystems
     for ch in r'\/:*?"<>|':
         name = name.replace(ch, "_")
     return name.strip()
 
 
-def run_ytdlp(
+def resolve_url(entry: dict, base_url: str) -> str:
+    """Return a full URL from an entry that has either 'url' or 'id'."""
+    return entry.get("url") or (
+        f"{base_url}{entry['id']}" if entry.get("id") else ""
+    )
+
+
+def run_ytdlp_video(
     url: str,
     output_dir: str,
     archive_file: str,
-    cookies_file: str | None = None,
-    max_downloads: int = 20,
-    label: str = "",
+    cookies_file: str | None,
+    max_downloads: int,
 ) -> int:
     """
-    Run yt-dlp for a single source URL.
+    Download video content with yt-dlp.
 
     Format strategy:
       1. Best MP4 video up to 4K + best M4A audio (most compatible with Jellyfin)
@@ -44,11 +49,12 @@ def run_ytdlp(
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    output_template = os.path.join(output_dir, "%(upload_date>%Y-%m-%d)s %(title)s [%(id)s].%(ext)s")
+    output_template = os.path.join(
+        output_dir, "%(upload_date>%Y-%m-%d)s %(title)s [%(id)s].%(ext)s"
+    )
 
     cmd = [
         "yt-dlp",
-        # Quality: prefer 4K MP4+M4A, fall back gracefully
         "--format",
         (
             "bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]"
@@ -56,69 +62,151 @@ def run_ytdlp(
             "/best"
         ),
         "--merge-output-format", "mp4",
-        # SponsorBlock: strip all non-content segments
         "--sponsorblock-remove",
         "sponsor,selfpromo,interaction,intro,outro,preview,music_offtopic",
-        # Track downloads to avoid re-downloading
         "--download-archive", archive_file,
-        # Output naming: date + title + video ID for uniqueness
         "--output", output_template,
-        # Metadata & thumbnails embedded in the MP4
         "--embed-thumbnail",
         "--embed-metadata",
         "--convert-thumbnails", "jpg",
-        # Skip live streams and ongoing broadcasts
         "--match-filter", "!is_live & !was_live",
-        # Limit videos per run to avoid runaway jobs
         "--max-downloads", str(max_downloads),
-        # Gracefully skip unavailable/private videos rather than aborting
         "--ignore-errors",
-        # Retry network errors
         "--retries", "5",
         "--fragment-retries", "5",
-        # Rate limiting to be a good citizen
         "--sleep-interval", "2",
         "--max-sleep-interval", "5",
     ]
 
+    _append_cookies(cmd, cookies_file)
+    cmd.append(url)
+
+    print(f"  [cmd] yt-dlp {' '.join(cmd[1:])}")
+    return subprocess.run(cmd).returncode
+
+
+def run_ytdlp_music(
+    url: str,
+    output_dir: str,
+    archive_file: str,
+    cookies_file: str | None,
+    max_downloads: int,
+) -> int:
+    """
+    Download audio-only content with yt-dlp for Jellyfin's Music library.
+
+    Uses opus (YouTube's native audio codec — no re-encoding, best quality).
+    Embeds thumbnail as cover art and writes all available metadata tags so
+    Jellyfin can display artist, title, and album art correctly.
+    """
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # Jellyfin music scanner reads title/artist from tags, not filenames,
+    # but a clean filename helps when browsing the filesystem directly.
+    output_template = os.path.join(
+        output_dir, "%(title)s [%(id)s].%(ext)s"
+    )
+
+    cmd = [
+        "yt-dlp",
+        # Extract audio only — no video stream downloaded
+        "--extract-audio",
+        # Opus is YouTube's native format: zero re-encoding, best quality/size
+        "--audio-format", "opus",
+        "--audio-quality", "0",
+        "--download-archive", archive_file,
+        "--output", output_template,
+        # Cover art embedded as album art tag
+        "--embed-thumbnail",
+        "--embed-metadata",
+        "--convert-thumbnails", "jpg",
+        # Skip live streams
+        "--match-filter", "!is_live & !was_live",
+        "--max-downloads", str(max_downloads),
+        "--ignore-errors",
+        "--retries", "5",
+        "--fragment-retries", "5",
+        "--sleep-interval", "2",
+        "--max-sleep-interval", "5",
+    ]
+
+    _append_cookies(cmd, cookies_file)
+    cmd.append(url)
+
+    print(f"  [cmd] yt-dlp {' '.join(cmd[1:])}")
+    return subprocess.run(cmd).returncode
+
+
+def _append_cookies(cmd: list[str], cookies_file: str | None) -> None:
     if cookies_file and Path(cookies_file).exists():
         cmd.extend(["--cookies", cookies_file])
         print(f"  [auth] Using cookies from {cookies_file}")
     else:
-        print(f"  [auth] No cookies file found at {cookies_file} — public content only")
+        print(f"  [auth] No cookies file — public content only")
 
-    cmd.append(url)
 
-    print(f"  [cmd] yt-dlp {' '.join(cmd[1:])}")
-    result = subprocess.run(cmd)
+def _process_sources(
+    sources: list[dict],
+    label_key: str,
+    base_url: str,
+    output_root: str,
+    archive_dir: str,
+    archive_prefix: str,
+    cookies_file: str,
+    max_downloads: int,
+    runner,
+) -> list[str]:
+    errors: list[str] = []
+    for entry in sources:
+        name = entry.get("name", f"Unknown {label_key}")
+        url = resolve_url(entry, base_url)
+        if not url:
+            print(f"SKIP: {label_key} '{name}' has no URL or id configured.")
+            continue
 
-    # yt-dlp exit codes:
-    #   0 = success
-    #   1 = some errors occurred but download continued
-    #   2 = critical error
-    # We also see 101 when --max-downloads is hit (treated as success)
-    return result.returncode
+        safe_name = sanitize_name(name)
+        output_dir = os.path.join(output_root, safe_name)
+        archive_file = os.path.join(archive_dir, f"{archive_prefix}-{safe_name}.txt")
+
+        print(f"\n>>> {label_key}: {name}")
+        print(f"    url:    {url}")
+        print(f"    output: {output_dir}")
+
+        rc = runner(
+            url=url,
+            output_dir=output_dir,
+            archive_file=archive_file,
+            cookies_file=cookies_file,
+            max_downloads=max_downloads,
+        )
+
+        if rc not in (0, 1, 101):
+            errors.append(f"{label_key} '{name}' failed with exit code {rc}")
+        else:
+            print(f"    [done] exit code {rc}")
+
+    return errors
 
 
 def main() -> None:
-    config_file = os.getenv("CONFIG_FILE", "/config/sources.yaml")
-    media_root = os.getenv("MEDIA_ROOT", "/media")
-    archive_dir = os.getenv("ARCHIVE_DIR", "/archive")
-    cookies_file = os.getenv("COOKIES_FILE", "/secrets/cookies.txt")
+    config_file  = os.getenv("CONFIG_FILE",   "/config/sources.yaml")
+    media_root   = os.getenv("MEDIA_ROOT",    "/media")
+    music_root   = os.getenv("MUSIC_ROOT",    "/music")
+    archive_dir  = os.getenv("ARCHIVE_DIR",   "/archive")
+    cookies_file = os.getenv("COOKIES_FILE",  "/secrets/cookies.txt")
     max_downloads = int(os.getenv("MAX_DOWNLOADS_PER_SOURCE", "20"))
 
     print("=" * 60)
     print("yt-sync starting")
     print(f"  config:       {config_file}")
     print(f"  media root:   {media_root}")
+    print(f"  music root:   {music_root}")
     print(f"  archive dir:  {archive_dir}")
     print(f"  max per src:  {max_downloads}")
     print("=" * 60)
 
-    # Ensure archive directory exists
     Path(archive_dir).mkdir(parents=True, exist_ok=True)
 
-    # Load config
     try:
         with open(config_file) as f:
             config = yaml.safe_load(f) or {}
@@ -126,79 +214,54 @@ def main() -> None:
         print(f"ERROR: Config file not found: {config_file}")
         sys.exit(1)
 
-    channels = config.get("channels", [])
-    playlists = config.get("playlists", [])
+    channels       = config.get("channels", [])
+    playlists      = config.get("playlists", [])
+    music_playlists = config.get("music_playlists", [])
 
-    if not channels and not playlists:
-        print("WARNING: No channels or playlists configured. Nothing to do.")
+    if not channels and not playlists and not music_playlists:
+        print("WARNING: No sources configured. Nothing to do.")
         sys.exit(0)
 
     errors: list[str] = []
 
-    # --- Channels ---
-    for entry in channels:
-        name = entry.get("name", "Unknown Channel")
-        url = entry.get("url", "")
-        if not url:
-            print(f"SKIP: Channel '{name}' has no URL configured.")
-            continue
+    # --- Video channels ---
+    errors += _process_sources(
+        sources=channels,
+        label_key="Channel",
+        base_url="",
+        output_root=os.path.join(media_root, "YouTube Channels"),
+        archive_dir=archive_dir,
+        archive_prefix="channel",
+        cookies_file=cookies_file,
+        max_downloads=max_downloads,
+        runner=run_ytdlp_video,
+    )
 
-        safe_name = sanitize_name(name)
-        output_dir = os.path.join(media_root, "YouTube Channels", safe_name)
-        archive_file = os.path.join(archive_dir, f"channel-{safe_name}.txt")
+    # --- Video playlists / watchlists ---
+    errors += _process_sources(
+        sources=playlists,
+        label_key="Playlist",
+        base_url="https://www.youtube.com/playlist?list=",
+        output_root=os.path.join(media_root, "YouTube Playlists"),
+        archive_dir=archive_dir,
+        archive_prefix="playlist",
+        cookies_file=cookies_file,
+        max_downloads=max_downloads,
+        runner=run_ytdlp_video,
+    )
 
-        print(f"\n>>> Channel: {name}")
-        print(f"    url:     {url}")
-        print(f"    output:  {output_dir}")
-
-        rc = run_ytdlp(
-            url=url,
-            output_dir=output_dir,
-            archive_file=archive_file,
-            cookies_file=cookies_file,
-            max_downloads=max_downloads,
-            label=name,
-        )
-
-        if rc not in (0, 1, 101):
-            errors.append(f"Channel '{name}' failed with exit code {rc}")
-        else:
-            print(f"    [done] exit code {rc}")
-
-    # --- Playlists / Watchlists ---
-    for entry in playlists:
-        name = entry.get("name", "Unknown Playlist")
-        # Support either a full URL or just a playlist ID
-        url = entry.get("url") or (
-            f"https://www.youtube.com/playlist?list={entry['id']}"
-            if entry.get("id")
-            else ""
-        )
-        if not url:
-            print(f"SKIP: Playlist '{name}' has no URL or id configured.")
-            continue
-
-        safe_name = sanitize_name(name)
-        output_dir = os.path.join(media_root, "YouTube Playlists", safe_name)
-        archive_file = os.path.join(archive_dir, f"playlist-{safe_name}.txt")
-
-        print(f"\n>>> Playlist: {name}")
-        print(f"    url:     {url}")
-        print(f"    output:  {output_dir}")
-
-        rc = run_ytdlp(
-            url=url,
-            output_dir=output_dir,
-            archive_file=archive_file,
-            cookies_file=cookies_file,
-            max_downloads=max_downloads,
-            label=name,
-        )
-
-        if rc not in (0, 1, 101):
-            errors.append(f"Playlist '{name}' failed with exit code {rc}")
-        else:
-            print(f"    [done] exit code {rc}")
+    # --- Music playlists (audio-only, goes to Jellyfin Music library) ---
+    errors += _process_sources(
+        sources=music_playlists,
+        label_key="Music Playlist",
+        base_url="https://music.youtube.com/playlist?list=",
+        output_root=os.path.join(music_root, "YouTube Music"),
+        archive_dir=archive_dir,
+        archive_prefix="music",
+        cookies_file=cookies_file,
+        max_downloads=max_downloads,
+        runner=run_ytdlp_music,
+    )
 
     # --- Summary ---
     print("\n" + "=" * 60)
