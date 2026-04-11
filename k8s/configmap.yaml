@@ -70,5 +70,5 @@ data:
       # Full YouTube Music URL also works:
       # - name: "Workout Mix"
       #   url: "https://music.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxxxx"
-        - name: "Fingerstyle"
-          url: https://music.youtube.com/playlist?list=PLkLzHrXlITEUAaJEzvnq3pERxn-JM4BC6
+      - name: "Fingerstyle"
+        url: "https://music.youtube.com/playlist?list=PLkLzHrXlITEUAaJEzvnq3pERxn-JM4BC6"
