@@ -1,0 +1,39 @@
+---
+# PVC for the NFS videos share.
+# Downloaded videos land here under:
+#   YouTube Channels/<channel-name>/
+#   YouTube Playlists/<playlist-name>/
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yt-sync-videos-nfs-pvc
+  namespace: media
+  labels:
+    app: yt-sync
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 500Gi
+  volumeName: yt-sync-videos-nfs-pv
+
+---
+# PVC for the download archive (small text files tracking what has been downloaded).
+# Stored on local-path so it persists across CronJob runs without touching the NAS.
+# If this PVC is lost, yt-dlp will re-download everything — recreate and let it rebuild.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yt-sync-archive-pvc
+  namespace: media
+  labels:
+    app: yt-sync
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

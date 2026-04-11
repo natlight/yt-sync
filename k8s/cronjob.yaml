@@ -1,0 +1,94 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: yt-sync
+  namespace: media
+  labels:
+    app: yt-sync
+spec:
+  # Run daily at 3:00 AM. Adjust as needed (crontab.guru is helpful).
+  schedule: "0 3 * * *"
+
+  # Never run two jobs simultaneously — if the previous run is still going, skip.
+  concurrencyPolicy: Forbid
+
+  # Keep the last 3 successful and 3 failed job pods for log inspection.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+  jobTemplate:
+    spec:
+      # Retry the job up to 2 times on failure before giving up.
+      backoffLimit: 2
+
+      template:
+        metadata:
+          labels:
+            app: yt-sync
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+            - name: yt-sync
+              # Update this image tag after each build/push to your registry.
+              # Recommended: use a specific sha256 digest in production.
+              image: ghcr.io/natlight/yt-sync:latest
+              imagePullPolicy: Always
+
+              env:
+                - name: CONFIG_FILE
+                  value: /config/sources.yaml
+                # Videos land at /media/YouTube Channels/<name>/ etc.
+                - name: MEDIA_ROOT
+                  value: /media
+                # Archive files persist here between runs
+                - name: ARCHIVE_DIR
+                  value: /archive
+                # Cookies file path inside the container (from secret)
+                - name: COOKIES_FILE
+                  value: /secrets/cookies.txt
+                # Max videos to download per channel/playlist per run.
+                # Prevents a single source from consuming an entire run.
+                - name: MAX_DOWNLOADS_PER_SOURCE
+                  value: "25"
+
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                  readOnly: true
+                - name: media
+                  mountPath: /media
+                - name: archive
+                  mountPath: /archive
+                - name: cookies
+                  mountPath: /secrets
+                  readOnly: true
+
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1500m"
+
+          volumes:
+            - name: config
+              configMap:
+                name: yt-sync-config
+
+            - name: media
+              persistentVolumeClaim:
+                claimName: yt-sync-videos-nfs-pvc
+
+            - name: archive
+              persistentVolumeClaim:
+                claimName: yt-sync-archive-pvc
+
+            # Secret is optional — public channels work without it.
+            # Private playlists (Watch Later, Liked Videos) require cookies.
+            - name: cookies
+              secret:
+                secretName: yt-sync-cookies
+                optional: true

@@ -1,0 +1,51 @@
+---
+# Edit this ConfigMap to add/remove channels and playlists.
+# Apply changes with: kubectl apply -f k8s/configmap.yaml
+# The CronJob picks up the new config on its next run (no restart needed).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yt-sync-config
+  namespace: media
+  labels:
+    app: yt-sync
+data:
+  sources.yaml: |
+    # -------------------------------------------------------------------------
+    # YouTube Channels
+    # Each channel is downloaded into:
+    #   <media_root>/YouTube Channels/<name>/
+    #
+    # Use the channel's @handle URL (preferred) or /channel/UCxxxxxx URL.
+    # Only new videos (not in the archive) are downloaded each run.
+    # -------------------------------------------------------------------------
+    channels:
+      - name: "Example Channel"
+        url: "https://www.youtube.com/@examplechannel"
+
+      # Add more channels here:
+      # - name: "Linus Tech Tips"
+      #   url: "https://www.youtube.com/@LinusTechTips"
+
+    # -------------------------------------------------------------------------
+    # YouTube Playlists / Watchlists
+    # Each playlist is downloaded into:
+    #   <media_root>/YouTube Playlists/<name>/
+    #
+    # Provide either a full URL or just the playlist id (PLxxxxxx / WL / LL etc.)
+    # Private playlists (Watch Later = WL, Liked Videos = LL) require cookies.
+    # See k8s/secret-instructions.md for how to export and store cookies.
+    # -------------------------------------------------------------------------
+    playlists:
+      - name: "Watch Later"
+        id: "WL"
+
+      # - name: "Liked Videos"
+      #   id: "LL"
+
+      # - name: "My Playlist"
+      #   id: "PLxxxxxxxxxxxxxxxxxx"
+
+      # Full URL also works:
+      # - name: "Tech Reviews"
+      #   url: "https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxxxx"
