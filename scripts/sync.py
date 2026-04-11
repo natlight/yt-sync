@@ -85,6 +85,31 @@ def run_ytdlp_video(
     return subprocess.run(cmd).returncode
 
 
+def write_m3u_playlist(output_dir: str, playlist_name: str) -> None:
+    """
+    Write an M3U8 file in the playlist folder so Jellyfin imports it as a playlist.
+
+    Jellyfin scans .m3u8 files anywhere in the music library and creates a matching
+    playlist. Uses relative paths so the file works regardless of mount location.
+    Re-written on every run so newly downloaded tracks are always included.
+    """
+    tracks = sorted(Path(output_dir).glob("*.opus"))
+    if not tracks:
+        print(f"  [m3u] No tracks found yet, skipping playlist file")
+        return
+
+    m3u_path = Path(output_dir) / f"{playlist_name}.m3u8"
+    with open(m3u_path, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for track in tracks:
+            # Strip the [videoID] suffix from the display name
+            display = track.stem.rsplit(" [", 1)[0]
+            f.write(f"#EXTINF:-1,{display}\n")
+            f.write(f"{track.name}\n")
+
+    print(f"  [m3u] Wrote {len(tracks)} tracks → {m3u_path.name}")
+
+
 def run_ytdlp_music(
     url: str,
     output_dir: str,
@@ -251,17 +276,35 @@ def main() -> None:
     )
 
     # --- Music playlists (audio-only, goes to Jellyfin Music library) ---
-    errors += _process_sources(
-        sources=music_playlists,
-        label_key="Music Playlist",
-        base_url="https://music.youtube.com/playlist?list=",
-        output_root=os.path.join(music_root, "YouTube Music"),
-        archive_dir=archive_dir,
-        archive_prefix="music",
-        cookies_file=cookies_file,
-        max_downloads=max_downloads,
-        runner=run_ytdlp_music,
-    )
+    music_output_root = os.path.join(music_root, "YouTube Music")
+    for entry in music_playlists:
+        name = entry.get("name", "Unknown Music Playlist")
+        url = resolve_url(entry, "https://music.youtube.com/playlist?list=")
+        if not url:
+            print(f"SKIP: Music Playlist '{name}' has no URL or id configured.")
+            continue
+
+        safe_name = sanitize_name(name)
+        output_dir = os.path.join(music_output_root, safe_name)
+        archive_file = os.path.join(archive_dir, f"music-{safe_name}.txt")
+
+        print(f"\n>>> Music Playlist: {name}")
+        print(f"    url:    {url}")
+        print(f"    output: {output_dir}")
+
+        rc = run_ytdlp_music(
+            url=url,
+            output_dir=output_dir,
+            archive_file=archive_file,
+            cookies_file=cookies_file,
+            max_downloads=max_downloads,
+        )
+
+        if rc not in (0, 1, 101):
+            errors.append(f"Music Playlist '{name}' failed with exit code {rc}")
+        else:
+            print(f"    [done] exit code {rc}")
+            write_m3u_playlist(output_dir, safe_name)
 
     # --- Summary ---
     print("\n" + "=" * 60)
