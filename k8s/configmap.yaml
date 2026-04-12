@@ -38,8 +38,8 @@ data:
     # See k8s/secret-instructions.md for how to export and store cookies.
     # -------------------------------------------------------------------------
     playlists:
-      - name: "Watch Later"
-        id: "WL"
+      # - name: "Watch Later"
+      #   id: "WL"
 
       # - name: "Liked Videos"
       #   id: "LL"
@@ -62,8 +62,8 @@ data:
     # Private playlists require cookies (same secret as above).
     # -------------------------------------------------------------------------
     music_playlists:
-      - name: "My Music Mix"
-        id: "PLxxxxxxxxxxxxxxxxxx"
+      # - name: "My Music Mix"
+      #   id: "PLxxxxxxxxxxxxxxxxxx"
 
       # - name: "Liked Music"
       #   id: "LM"
