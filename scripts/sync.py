@@ -81,7 +81,10 @@ def run_ytdlp_video(
 
     if date_after:
         cmd.extend(["--dateafter", date_after])
-        print(f"  [filter] Only videos on/after {date_after}")
+        # Stop as soon as we hit a video older than the cutoff (channels are
+        # ordered newest-first, so everything after the first rejection is old).
+        cmd.append("--break-on-reject")
+        print(f"  [filter] Only videos on/after {date_after} (stop at first older video)")
 
     _append_cookies(cmd, cookies_file)
     cmd.append(url)
