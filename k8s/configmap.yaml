@@ -20,8 +20,9 @@ data:
     # Only new videos (not in the archive) are downloaded each run.
     # -------------------------------------------------------------------------
     channels:
-      - name: "Example Channel"
-        url: "https://www.youtube.com/@examplechannel"
+      - name: "Matthew Berman"
+        url: "https://www.youtube.com/@matthew_berman"
+        date_after: "20260412"  # only download videos published on/after this date
 
       # Add more channels here:
       # - name: "Linus Tech Tips"

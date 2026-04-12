@@ -35,6 +35,7 @@ def run_ytdlp_video(
     archive_file: str,
     cookies_file: str | None,
     max_downloads: int,
+    date_after: str | None = None,
 ) -> int:
     """
     Download video content with yt-dlp.
@@ -77,6 +78,10 @@ def run_ytdlp_video(
         "--sleep-interval", "2",
         "--max-sleep-interval", "5",
     ]
+
+    if date_after:
+        cmd.extend(["--dateafter", date_after])
+        print(f"  [filter] Only videos on/after {date_after}")
 
     _append_cookies(cmd, cookies_file)
     cmd.append(url)
@@ -192,18 +197,23 @@ def _process_sources(
         safe_name = sanitize_name(name)
         output_dir = os.path.join(output_root, safe_name)
         archive_file = os.path.join(archive_dir, f"{archive_prefix}-{safe_name}.txt")
+        date_after = entry.get("date_after")
 
         print(f"\n>>> {label_key}: {name}")
         print(f"    url:    {url}")
         print(f"    output: {output_dir}")
 
-        rc = runner(
+        kwargs = dict(
             url=url,
             output_dir=output_dir,
             archive_file=archive_file,
             cookies_file=cookies_file,
             max_downloads=max_downloads,
         )
+        if date_after is not None:
+            kwargs["date_after"] = date_after
+
+        rc = runner(**kwargs)
 
         if rc not in (0, 1, 101):
             errors.append(f"{label_key} '{name}' failed with exit code {rc}")
