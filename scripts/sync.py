@@ -254,9 +254,9 @@ def main() -> None:
         print(f"ERROR: Config file not found: {config_file}")
         sys.exit(1)
 
-    channels       = config.get("channels", [])
-    playlists      = config.get("playlists", [])
-    music_playlists = config.get("music_playlists", [])
+    channels        = config.get("channels") or []
+    playlists       = config.get("playlists") or []
+    music_playlists = config.get("music_playlists") or []
 
     if not channels and not playlists and not music_playlists:
         print("WARNING: No sources configured. Nothing to do.")
