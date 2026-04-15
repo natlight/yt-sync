@@ -73,6 +73,14 @@ spec:
                 # Skipping it keeps the tunnel stable for the duration of the sync.
                 - name: HEALTH_VPN_DURATION_INITIAL
                   value: "6h"
+                # Disable DNS blocklist downloads — not needed for yt-dlp, and
+                # the downloads can OOM gluetun within its memory limit.
+                - name: BLOCK_MALICIOUS
+                  value: "off"
+                - name: BLOCK_ADS
+                  value: "off"
+                - name: BLOCK_SURVEILLANCE
+                  value: "off"
                 # Expose the gluetun control server so the main container can poll
                 # VPN readiness at http://localhost:8000/v1/vpn/status
               securityContext:
@@ -96,10 +104,10 @@ spec:
 
               resources:
                 requests:
-                  memory: "64Mi"
+                  memory: "128Mi"
                   cpu: "50m"
                 limits:
-                  memory: "128Mi"
+                  memory: "256Mi"
                   cpu: "200m"
 
           containers:
