@@ -63,14 +63,16 @@ spec:
                 # https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/private-internet-access.md
                 - name: SERVER_REGIONS
                   value: "US East"
-                # Disable DNS-over-TLS — use the cluster's CoreDNS via plain UDP 53
-                # instead of trying to reach Cloudflare DoT through the VPN tunnel.
-                - name: DOT
-                  value: "off"
-                # Allow K8s pod and service subnet traffic to bypass the VPN firewall
-                # so CoreDNS (10.43.x.x), pod-to-pod, and K8s API traffic all work.
+                # Allow K8s pod (10.42.0.0/16) and service (10.43.0.0/16) subnets to
+                # bypass the VPN firewall so CoreDNS and internal K8s traffic work.
                 - name: FIREWALL_OUTBOUND_SUBNETS
-                  value: "10.0.0.0/8"
+                  value: "10.42.0.0/16,10.43.0.0/16"
+                # Delay the VPN startup healthcheck by 6 hours — far longer than any
+                # job run. gluetun's DNS-over-TLS healthcheck fails in Kubernetes (port
+                # 853 is blocked by PIA) which causes it to continuously restart OpenVPN.
+                # Skipping it keeps the tunnel stable for the duration of the sync.
+                - name: HEALTH_VPN_DURATION_INITIAL
+                  value: "6h"
                 # Expose the gluetun control server so the main container can poll
                 # VPN readiness at http://localhost:8000/v1/vpn/status
               securityContext:
