@@ -63,6 +63,14 @@ spec:
                 # https://github.com/qdm12/gluetun-wiki/blob/main/setup/providers/private-internet-access.md
                 - name: SERVER_REGIONS
                   value: "US East"
+                # Disable DNS-over-TLS — use the cluster's CoreDNS via plain UDP 53
+                # instead of trying to reach Cloudflare DoT through the VPN tunnel.
+                - name: DOT
+                  value: "off"
+                # Allow K8s pod and service subnet traffic to bypass the VPN firewall
+                # so CoreDNS (10.43.x.x), pod-to-pod, and K8s API traffic all work.
+                - name: FIREWALL_OUTBOUND_SUBNETS
+                  value: "10.0.0.0/8"
                 # Expose the gluetun control server so the main container can poll
                 # VPN readiness at http://localhost:8000/v1/vpn/status
               securityContext:
