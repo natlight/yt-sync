@@ -65,11 +65,6 @@ spec:
                   value: "US East"
                 # Expose the gluetun control server so the main container can poll
                 # VPN readiness at http://localhost:8000/v1/vpn/status
-                - name: HTTP_CONTROL_SERVER_ADDRESS
-                  value: ":8000"
-                - name: HTTP_CONTROL_SERVER_LOG
-                  value: "off"
-
               securityContext:
                 capabilities:
                   add:
@@ -80,9 +75,11 @@ spec:
                   mountPath: /dev/net/tun
 
               readinessProbe:
-                httpGet:
-                  path: /v1/vpn/status
-                  port: 8000
+                exec:
+                  command:
+                    - sh
+                    - -c
+                    - "ip link show tun0 2>/dev/null | grep -q 'tun0'"
                 initialDelaySeconds: 5
                 periodSeconds: 5
                 failureThreshold: 24   # allow up to 2 minutes to connect
