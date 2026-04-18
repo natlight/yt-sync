@@ -46,7 +46,7 @@ def _video_cmd(
     output_template = str(output_dir / "%(upload_date>%Y-%m-%d)s %(title)s [%(id)s].%(ext)s")
     cmd = [
         "yt-dlp",
-        "--js-runtimes", "nodejs",
+        "--js-runtimes", "node",
         "--format",
         (
             "bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]"
@@ -92,7 +92,7 @@ def _music_cmd(
     output_template = str(output_dir / "%(title)s [%(id)s].%(ext)s")
     cmd = [
         "yt-dlp",
-        "--js-runtimes", "nodejs",
+        "--js-runtimes", "node",
         "--extract-audio",
         "--audio-format", "opus",
         "--audio-quality", "0",

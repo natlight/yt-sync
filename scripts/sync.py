@@ -56,7 +56,7 @@ def run_ytdlp_video(
 
     cmd = [
         "yt-dlp",
-        "--js-runtimes", "nodejs",
+        "--js-runtimes", "node",
         "--format",
         (
             "bestvideo[ext=mp4][height<=2160]+bestaudio[ext=m4a]"
@@ -143,7 +143,7 @@ def run_ytdlp_music(
 
     cmd = [
         "yt-dlp",
-        "--js-runtimes", "nodejs",
+        "--js-runtimes", "node",
         # Extract audio only — no video stream downloaded
         "--extract-audio",
         # Opus is YouTube's native format: zero re-encoding, best quality/size
