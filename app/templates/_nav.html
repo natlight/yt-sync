@@ -1,20 +1,39 @@
-<nav class="bg-slate-800 border-b border-slate-700">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-6">
-    <a href="/" class="text-lg font-semibold text-white">yt-sync</a>
-    <div class="flex gap-4 text-sm">
+<nav style="background:#000; border-bottom:1px solid var(--green-dark); padding:0 16px;">
+  <div class="max-w-7xl mx-auto flex items-center" style="height:44px; gap:0;">
+
+    <a href="/" style="font-family:'VT323',monospace; font-size:22px; color:var(--green);
+       text-shadow:0 0 16px rgba(0,255,65,0.9); letter-spacing:3px; margin-right:24px;
+       text-decoration:none; white-space:nowrap;">
+      [YT-SYNC]
+    </a>
+
+    <div style="display:flex; gap:0; height:100%;">
       {% set links = [
-        ('dashboard', '/', 'Dashboard'),
-        ('sources', '/sources', 'Sources'),
-        ('downloads', '/downloads', 'Downloads'),
-        ('oneoff', '/oneoff', 'One-off'),
-        ('settings', '/settings', 'Settings'),
+        ('dashboard', '/', 'DASHBOARD'),
+        ('sources',   '/sources',   'SOURCES'),
+        ('downloads', '/downloads', 'DOWNLOADS'),
+        ('oneoff',    '/oneoff',    'ONE-OFF'),
+        ('settings',  '/settings',  'CONFIG'),
       ] %}
       {% for key, href, label in links %}
         <a href="{{ href }}"
-           class="px-2 py-1 rounded {% if active_page == key %}bg-slate-700 text-white{% else %}text-slate-300 hover:text-white{% endif %}">
-          {{ label }}
+           style="display:flex; align-items:center; padding:0 14px; font-size:13px;
+                  letter-spacing:1px; text-decoration:none; height:100%;
+                  {% if active_page == key %}
+                    color:var(--green); background:var(--green-dark);
+                    border-left:1px solid var(--green-dark); border-right:1px solid var(--green-dark);
+                    text-shadow:0 0 10px rgba(0,255,65,0.8);
+                  {% else %}
+                    color:#336633; border-left:1px solid transparent; border-right:1px solid transparent;
+                  {% endif %}">
+          {% if active_page == key %}<span style="margin-right:4px; color:var(--green-dim);">></span>{% endif %}{{ label }}
         </a>
       {% endfor %}
     </div>
+
+    <div style="margin-left:auto; font-size:11px; color:var(--green-dark); letter-spacing:1px;">
+      STATUS: <span style="color:var(--green); text-shadow:0 0 6px var(--green);">ONLINE</span>
+    </div>
+
   </div>
 </nav>

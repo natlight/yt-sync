@@ -1,29 +1,33 @@
-<div class="card rounded-lg p-3 text-sm"
+<div class="card p-3"
      {% if polling %}hx-get="/jobs/{{ job_id }}/status" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
-  <div class="flex justify-between items-center mb-2">
-    <div>
-      <span class="text-slate-400">Job</span>
-      <span class="font-mono text-slate-200">#{{ job_id }}</span>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div style="font-size:13px;">
+      <span class="muted">JOB</span>
+      <span style="color:var(--green); font-family:'Share Tech Mono',monospace;">&nbsp;#{{ job_id }}</span>
       {% if job %}
-        <span class="ml-2 px-2 py-0.5 rounded text-xs
-          {% if job.status == 'ok' %}bg-emerald-700 text-white
-          {% elif job.status == 'error' %}bg-rose-700 text-white
-          {% elif job.status == 'cancelled' %}bg-slate-600 text-white
-          {% elif job.status == 'running' %}bg-sky-700 text-white
-          {% else %}bg-slate-700 text-slate-300{% endif %}">
-          {{ job.status }}
-        </span>
-        <span class="ml-2 text-slate-400">{{ job.kind }}</span>
+        &nbsp;
+        {% if job.status == 'ok' %}
+          <span style="border:1px solid var(--green); color:var(--green); padding:1px 6px; font-size:11px;">OK</span>
+        {% elif job.status == 'error' %}
+          <span style="border:1px solid var(--red); color:var(--red); padding:1px 6px; font-size:11px;">ERROR</span>
+        {% elif job.status == 'running' %}
+          <span style="border:1px solid var(--cyan); color:var(--cyan); padding:1px 6px; font-size:11px;">RUNNING</span>
+        {% elif job.status == 'cancelled' %}
+          <span style="border:1px solid #444; color:#444; padding:1px 6px; font-size:11px;">CANCELLED</span>
+        {% else %}
+          <span style="border:1px solid #333; color:#555; padding:1px 6px; font-size:11px;">{{ job.status | upper }}</span>
+        {% endif %}
+        <span class="muted" style="font-size:11px; margin-left:8px;">{{ job.kind }}</span>
       {% else %}
-        <span class="ml-2 text-slate-400">queued…</span>
+        <span class="muted" style="font-size:11px; margin-left:4px;">[QUEUED...]</span>
       {% endif %}
     </div>
     {% if job and job.status in ['queued'] %}
-      <button hx-post="/jobs/{{ job_id }}/cancel" hx-target="closest div.card" hx-swap="outerHTML"
-              class="text-rose-400 text-xs">Cancel</button>
+      <button hx-post="/jobs/{{ job_id }}/cancel" hx-target="closest div" hx-swap="outerHTML"
+              class="btn btn-danger" style="font-size:11px; padding:2px 8px;">ABORT</button>
     {% endif %}
   </div>
   {% if job and job.log_tail %}
-    <pre class="bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-300 overflow-auto max-h-64">{{ job.log_tail[-4000:] }}</pre>
+    <pre style="max-height:256px; font-size:11px;">{{ job.log_tail[-4000:] }}</pre>
   {% endif %}
 </div>

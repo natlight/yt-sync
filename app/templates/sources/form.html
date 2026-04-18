@@ -1,7 +1,10 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit' if source else 'New' }} source — yt-sync{% endblock %}
+{% block title %}{{ 'EDIT' if source else 'NEW' }} SOURCE // YT-SYNC{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold text-white mb-4">{{ 'Edit' if source else 'New' }} source</h1>
+
+<h1 class="page-title" style="margin-bottom:20px;">
+  {{ '> EDIT SOURCE' if source else '> NEW SOURCE' }}
+</h1>
 
 <form
   {% if form_method == 'put' %}
@@ -9,59 +12,66 @@
   {% else %}
     hx-post="{{ form_action }}"
   {% endif %}
-  class="card rounded-lg p-4 max-w-2xl space-y-4">
+  class="card p-5"
+  style="max-width:640px;">
 
-  <div>
-    <label class="block text-sm text-slate-300 mb-1">Type</label>
-    <select name="type" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100">
-      {% for t in ['channel', 'playlist', 'music'] %}
-        <option value="{{ t }}" {% if source and (source.type == t or source.type.value == t) %}selected{% endif %}>{{ t }}</option>
-      {% endfor %}
-    </select>
-  </div>
+  <div class="grid grid-cols-1 gap-5">
 
-  <div>
-    <label class="block text-sm text-slate-300 mb-1">Name</label>
-    <input name="name" required value="{{ source.name if source else '' }}"
-           class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100" />
-  </div>
-
-  <div>
-    <label class="block text-sm text-slate-300 mb-1">URL or playlist id</label>
-    <input name="url" required value="{{ source.url if source else '' }}"
-           class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100"
-           placeholder="https://www.youtube.com/@channel or https://youtube.com/playlist?list=..." />
-  </div>
-
-  <div class="grid grid-cols-2 gap-4">
     <div>
-      <label class="block text-sm text-slate-300 mb-1">Cron (UTC)</label>
-      <input name="cron" value="{{ source.cron if source and source.cron else '' }}"
-             placeholder="0 3 * * *  (blank = manual only)"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 font-mono text-slate-100" />
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">SOURCE TYPE</label>
+      <select name="type" style="padding:5px 8px; width:200px;">
+        {% for t in ['channel', 'playlist', 'music'] %}
+          <option value="{{ t }}" {% if source and (source.type == t or source.type.value == t) %}selected{% endif %}>{{ t | upper }}</option>
+        {% endfor %}
+      </select>
     </div>
+
     <div>
-      <label class="block text-sm text-slate-300 mb-1">Max downloads / run</label>
-      <input name="max_downloads" type="number" min="1" value="{{ source.max_downloads if source else 25 }}"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100" />
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">DISPLAY NAME</label>
+      <input name="name" required value="{{ source.name if source else '' }}"
+             style="width:100%; padding:5px 8px;" />
     </div>
-  </div>
 
-  <div>
-    <label class="block text-sm text-slate-300 mb-1">date_after (videos only, YYYYMMDD)</label>
-    <input name="date_after" value="{{ source.date_after if source and source.date_after else '' }}"
-           placeholder="20260101"
-           class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 font-mono text-slate-100" />
-  </div>
+    <div>
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">TARGET URL / PLAYLIST ID</label>
+      <input name="url" required value="{{ source.url if source else '' }}"
+             placeholder="https://www.youtube.com/@channel"
+             style="width:100%; padding:5px 8px;" />
+    </div>
 
-  <label class="flex items-center gap-2 text-sm text-slate-300">
-    <input type="checkbox" name="enabled" {% if source and source.enabled %}checked{% endif %} class="bg-slate-900 border-slate-700" />
-    Enabled (will be picked up by scheduler)
-  </label>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">CRON SCHEDULE (UTC)</label>
+        <input name="cron" value="{{ source.cron if source and source.cron else '' }}"
+               placeholder="0 3 * * *"
+               style="width:100%; padding:5px 8px; font-family:'Share Tech Mono',monospace;" />
+        <div class="muted" style="font-size:10px; margin-top:2px;">blank = manual trigger only</div>
+      </div>
+      <div>
+        <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">MAX DOWNLOADS / RUN</label>
+        <input name="max_downloads" type="number" min="1" value="{{ source.max_downloads if source else 25 }}"
+               style="width:100%; padding:5px 8px;" />
+      </div>
+    </div>
 
-  <div class="flex gap-2 pt-2">
-    <button type="submit" class="btn bg-emerald-600 hover:bg-emerald-500 text-white">Save</button>
-    <a href="/sources" class="btn bg-slate-700 hover:bg-slate-600 text-slate-200">Cancel</a>
+    <div>
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">DATE_AFTER FILTER (YYYYMMDD)</label>
+      <input name="date_after" value="{{ source.date_after if source and source.date_after else '' }}"
+             placeholder="20260101"
+             style="width:200px; padding:5px 8px; font-family:'Share Tech Mono',monospace;" />
+    </div>
+
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+      <input type="checkbox" name="enabled" {% if source and source.enabled %}checked{% endif %} />
+      <span style="color:var(--green-dim); font-size:11px; letter-spacing:2px;">ENABLE SCHEDULER PICKUP</span>
+    </label>
+
+    <div style="display:flex; gap:10px; padding-top:8px; border-top:1px solid var(--green-dark);">
+      <button type="submit" class="btn btn-primary" style="letter-spacing:2px;">[ SAVE ]</button>
+      <a href="/sources" class="btn btn-secondary" style="letter-spacing:1px;">[ CANCEL ]</a>
+    </div>
+
   </div>
 </form>
+
 {% endblock %}

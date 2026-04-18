@@ -1,68 +1,85 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — yt-sync{% endblock %}
+{% block title %}DASHBOARD // YT-SYNC{% endblock %}
 {% block content %}
+
+<div style="margin-bottom:16px; display:flex; align-items:baseline; gap:12px;">
+  <h1 class="page-title">SYSTEM STATUS</h1>
+  <span class="muted" style="font-size:12px;">// REAL-TIME MONITOR</span>
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-  <section class="card rounded-lg p-4">
-    <h2 class="text-lg font-semibold mb-3 text-white">Active jobs</h2>
+  <section class="card p-4">
+    <h2 class="section-header">ACTIVE JOBS</h2>
     <div hx-get="/jobs/active" hx-trigger="load, every 3s" hx-swap="innerHTML">
-      <p class="text-slate-400 text-sm">Loading…</p>
+      <p class="muted" style="font-size:12px;">QUERYING...</p>
     </div>
   </section>
 
-  <section class="card rounded-lg p-4">
-    <h2 class="text-lg font-semibold mb-3 text-white">Next 5 scheduled</h2>
+  <section class="card p-4">
+    <h2 class="section-header">NEXT 5 SCHEDULED</h2>
     {% if upcoming %}
-      <ul class="text-sm space-y-1">
+      <ul style="font-size:13px; list-style:none; padding:0; margin:0;">
         {% for when, name in upcoming %}
-          <li class="flex justify-between border-b border-slate-700 py-1">
-            <span class="text-slate-300 truncate">{{ name }}</span>
-            <span class="text-slate-400 ml-2 whitespace-nowrap">{{ when | datetime }}</span>
+          <li style="display:flex; justify-content:space-between; border-bottom:1px solid #0a1f0a; padding:4px 0;">
+            <span class="val" style="truncate; max-width:55%;">{{ name }}</span>
+            <span class="muted" style="font-size:11px; white-space:nowrap; margin-left:8px;">{{ when | datetime }}</span>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <p class="text-slate-400 text-sm">Nothing scheduled. Enable a source with a cron expression to begin.</p>
+      <p class="muted" style="font-size:12px;">> NO JOBS QUEUED. ADD A SOURCE WITH CRON SCHEDULE TO BEGIN.</p>
     {% endif %}
   </section>
 
-  <section class="card rounded-lg p-4">
-    <h2 class="text-lg font-semibold mb-3 text-white">Stats</h2>
-    <dl class="text-sm space-y-1">
-      <div class="flex justify-between"><dt class="text-slate-400">Sources</dt><dd>{{ source_count }}</dd></div>
-      <div class="flex justify-between"><dt class="text-slate-400">Active jobs</dt><dd>{{ running | length }}</dd></div>
-      <div class="flex justify-between"><dt class="text-slate-400">Recent downloads</dt><dd>{{ recent_downloads | length }}</dd></div>
+  <section class="card p-4">
+    <h2 class="section-header">SYSTEM STATS</h2>
+    <dl style="font-size:13px;">
+      <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #0a1f0a;">
+        <dt class="muted">SOURCES REGISTERED</dt>
+        <dd style="color:var(--green); text-shadow:0 0 6px var(--green);">{{ source_count }}</dd>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #0a1f0a;">
+        <dt class="muted">JOBS RUNNING</dt>
+        <dd style="color:var(--cyan); text-shadow:0 0 6px var(--cyan);">{{ running | length }}</dd>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:3px 0;">
+        <dt class="muted">RECENT DOWNLOADS</dt>
+        <dd style="color:var(--green);">{{ recent_downloads | length }}</dd>
+      </div>
     </dl>
   </section>
+
 </div>
 
-<section class="card rounded-lg p-4 mt-4">
-  <h2 class="text-lg font-semibold mb-3 text-white">Last 10 downloads</h2>
+<section class="card p-4 mt-4">
+  <h2 class="section-header">DOWNLOAD LOG // LAST 10 ENTRIES</h2>
   {% if recent_downloads %}
-  <table class="w-full text-sm">
-    <thead class="text-left text-slate-400">
+  <table>
+    <thead>
       <tr>
-        <th class="py-1">When</th>
-        <th>Video</th>
-        <th>Status</th>
+        <th style="width:130px;">TIMESTAMP</th>
+        <th>VIDEO TITLE</th>
+        <th style="width:80px;">RESULT</th>
       </tr>
     </thead>
     <tbody>
       {% for d in recent_downloads %}
-      <tr class="border-t border-slate-700">
-        <td class="py-1 text-slate-400">{{ d.started_at | humantime }}</td>
-        <td class="text-slate-200">{{ d.title or d.video_id }}</td>
+      <tr>
+        <td class="muted" style="font-size:12px; white-space:nowrap;">{{ d.started_at | humantime }}</td>
+        <td class="val">{{ d.title or d.video_id }}</td>
         <td>
-          {% if d.status == 'ok' %}<span class="text-emerald-400">ok</span>
-          {% elif d.status == 'error' %}<span class="text-rose-400">error</span>
-          {% else %}<span class="text-slate-400">{{ d.status }}</span>{% endif %}
+          {% if d.status == 'ok' %}<span class="status-ok">[ OK ]</span>
+          {% elif d.status == 'error' %}<span class="status-err">[ ERR ]</span>
+          {% else %}<span class="status-skip">[ {{ d.status | upper }} ]</span>{% endif %}
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p class="text-slate-400 text-sm">No downloads yet.</p>
+  <p class="muted" style="font-size:12px;">> NO DOWNLOAD RECORDS FOUND.</p>
   {% endif %}
 </section>
+
 {% endblock %}
