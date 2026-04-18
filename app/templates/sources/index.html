@@ -1,31 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Sources — yt-sync{% endblock %}
+{% block title %}SOURCES // YT-SYNC{% endblock %}
 {% block content %}
-<div class="flex justify-between items-center mb-4">
-  <h1 class="text-2xl font-semibold text-white">Sources</h1>
-  <a href="/sources/new" class="btn bg-emerald-600 hover:bg-emerald-500 text-white">+ New source</a>
+
+<div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
+  <h1 class="page-title">SOURCE REGISTRY</h1>
+  <a href="/sources/new" class="btn btn-primary" style="font-size:12px; letter-spacing:1px;">+ NEW SOURCE</a>
 </div>
 
 {% if not sources %}
-  <p class="text-slate-400">No sources yet. <a href="/sources/new" class="text-emerald-400 underline">Add one</a> or import from sources.yaml in <a href="/settings" class="text-emerald-400 underline">Settings</a>.</p>
+  <div class="card p-4">
+    <p class="muted">> NO SOURCES REGISTERED.</p>
+    <p style="margin-top:8px; font-size:13px;">
+      <a href="/sources/new">[ ADD SOURCE ]</a>
+      &nbsp; or import from &nbsp;
+      <a href="/settings">[ SETTINGS > IMPORT YAML ]</a>
+    </p>
+  </div>
 {% else %}
-<table class="w-full text-sm card rounded-lg overflow-hidden">
-  <thead class="bg-slate-800 text-left text-slate-400">
-    <tr>
-      <th class="px-3 py-2">Name</th>
-      <th>Type</th>
-      <th>Cron</th>
-      <th>Enabled</th>
-      <th>Last run</th>
-      <th>Status</th>
-      <th class="text-right px-3">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for s in sources %}
-      {% include "sources/_row.html" %}
-    {% endfor %}
-  </tbody>
-</table>
+<div class="card" style="overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>SOURCE NAME</th>
+        <th style="width:80px;">TYPE</th>
+        <th style="width:110px;">CRON SCHED</th>
+        <th style="width:60px;">ACTIVE</th>
+        <th style="width:100px;">LAST RUN</th>
+        <th style="width:70px;">RESULT</th>
+        <th style="width:160px; text-align:right; padding-right:12px;">ACTIONS</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sources %}
+        {% include "sources/_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endif %}
+
+<div id="job-status-area" class="mt-4"></div>
+
 {% endblock %}

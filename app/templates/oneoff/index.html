@@ -1,23 +1,41 @@
 {% extends "base.html" %}
-{% block title %}One-off download — yt-sync{% endblock %}
+{% block title %}ONE-OFF DOWNLOAD // YT-SYNC{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold text-white mb-4">One-off download</h1>
 
-<form class="card rounded-lg p-4 max-w-2xl space-y-4"
+<h1 class="page-title" style="margin-bottom:20px;">> ONE-OFF DOWNLOAD</h1>
+
+<form class="card p-5"
+      style="max-width:640px;"
       hx-post="/oneoff"
       hx-target="#job-status-area"
       hx-swap="innerHTML">
-  <div>
-    <label class="block text-sm text-slate-300 mb-1">URL</label>
+
+  <div style="margin-bottom:16px;">
+    <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">TARGET URL</label>
     <input name="url" required placeholder="https://www.youtube.com/watch?v=..."
-           class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100" />
+           style="width:100%; padding:5px 8px;" />
   </div>
-  <div class="flex gap-4 text-slate-300">
-    <label class="flex items-center gap-2"><input type="radio" name="type" value="video" checked> Video</label>
-    <label class="flex items-center gap-2"><input type="radio" name="type" value="music"> Music (audio only)</label>
+
+  <div style="margin-bottom:20px;">
+    <div style="font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:8px;">DOWNLOAD MODE</div>
+    <div style="display:flex; gap:20px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+        <input type="radio" name="type" value="video" checked />
+        <span>VIDEO (full)</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px;">
+        <input type="radio" name="type" value="music" />
+        <span style="color:#cc44ff; text-shadow:0 0 6px #cc44ff;">MUSIC (audio only)</span>
+      </label>
+    </div>
   </div>
-  <button type="submit" class="btn bg-emerald-600 hover:bg-emerald-500 text-white">Start download</button>
+
+  <button type="submit" class="btn btn-primary" style="letter-spacing:2px; padding:6px 20px;">
+    [ INITIATE DOWNLOAD ]
+  </button>
+
 </form>
 
 <div id="job-status-area" class="mt-6"></div>
+
 {% endblock %}
