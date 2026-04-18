@@ -1,0 +1,17 @@
+services:
+  yt-sync-web:
+    build: .
+    container_name: yt-sync-web
+    ports:
+      - "8880:8080"
+    environment:
+      DB_URL: sqlite:////data/app.sqlite
+      ARCHIVE_DIR: /data/archive
+      MEDIA_ROOT: /data/media
+      MUSIC_ROOT: /data/music
+      COOKIES_FILE: /data/secrets/cookies.txt
+      DEFAULT_MAX_DOWNLOADS: "5"
+      SKIP_VPN_WAIT: "1"
+    volumes:
+      - ./.devdata:/data
+    restart: unless-stopped

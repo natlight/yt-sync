@@ -1,0 +1,168 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yt-sync-web
+  namespace: media
+  labels:
+    app: yt-sync-web
+spec:
+  # SQLite + APScheduler are single-writer. Do not scale past 1.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: yt-sync-web
+  template:
+    metadata:
+      labels:
+        app: yt-sync-web
+    spec:
+      # ---------------------------------------------------------------
+      # PIA VPN sidecar (gluetun) — native sidecar initContainer.
+      # Same config as the CronJob, so all yt-dlp traffic routes through
+      # the VPN. The cluster subnets 10.42.0.0/16 + 10.43.0.0/16 bypass
+      # the firewall so Traefik can reach the FastAPI port below.
+      # ---------------------------------------------------------------
+      initContainers:
+        - name: pia-vpn
+          image: qmcgaw/gluetun:latest
+          imagePullPolicy: Always
+          restartPolicy: Always
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: private internet access
+            - name: VPN_TYPE
+              value: openvpn
+            - name: OPENVPN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pia-vpn-credentials
+                  key: username
+            - name: OPENVPN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pia-vpn-credentials
+                  key: password
+            - name: SERVER_REGIONS
+              value: "US East"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "10.42.0.0/16,10.43.0.0/16"
+            - name: HEALTH_VPN_DURATION_INITIAL
+              value: "6h"
+            - name: BLOCK_MALICIOUS
+              value: "off"
+            - name: BLOCK_ADS
+              value: "off"
+            - name: BLOCK_SURVEILLANCE
+              value: "off"
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          volumeMounts:
+            - name: tun-device
+              mountPath: /dev/net/tun
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "ip link show tun0 2>/dev/null | grep -q 'tun0'"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 24
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+
+      containers:
+        - name: web
+          image: ghcr.io/natlight/yt-sync:latest
+          imagePullPolicy: Always
+          # Uvicorn listens on 8080 — gluetun's HTTP control server uses 8000.
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DB_URL
+              value: "sqlite:////db/app.sqlite"
+            - name: ARCHIVE_DIR
+              value: /archive
+            - name: MEDIA_ROOT
+              value: /media
+            - name: MUSIC_ROOT
+              value: /music
+            - name: COOKIES_FILE
+              value: /secrets/cookies.txt
+            - name: DEFAULT_MAX_DOWNLOADS
+              value: "25"
+            - name: VPN_WAIT_TIMEOUT
+              value: "180"
+            - name: PORT
+              value: "8080"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          volumeMounts:
+            - name: db
+              mountPath: /db
+            - name: archive
+              mountPath: /archive
+            - name: media
+              mountPath: /media
+            - name: music
+              mountPath: /music
+            - name: cookies
+              mountPath: /secrets
+              readOnly: true
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "2Gi"
+              cpu: "1500m"
+
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: yt-sync-db-pvc
+        - name: archive
+          persistentVolumeClaim:
+            claimName: yt-sync-archive-pvc
+        - name: media
+          persistentVolumeClaim:
+            claimName: yt-sync-videos-nfs-pvc
+        - name: music
+          persistentVolumeClaim:
+            claimName: yt-sync-music-nfs-pvc
+        - name: cookies
+          secret:
+            secretName: yt-sync-cookies
+            optional: true
+        - name: config
+          configMap:
+            name: yt-sync-config
+            optional: true
+        - name: tun-device
+          hostPath:
+            path: /dev/net/tun

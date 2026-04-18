@@ -2,6 +2,14 @@
 cookies.txt
 *.cookies
 secrets/
+.env
+.env.*
+*.env
+*.pem
+*.key
+*-credentials.yaml
+*-credentials.txt
+*-secrets.yaml
 
 # Python
 __pycache__/
@@ -18,3 +26,4 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+.devdata/

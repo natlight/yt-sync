@@ -1,0 +1,29 @@
+<div class="card rounded-lg p-3 text-sm"
+     {% if polling %}hx-get="/jobs/{{ job_id }}/status" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  <div class="flex justify-between items-center mb-2">
+    <div>
+      <span class="text-slate-400">Job</span>
+      <span class="font-mono text-slate-200">#{{ job_id }}</span>
+      {% if job %}
+        <span class="ml-2 px-2 py-0.5 rounded text-xs
+          {% if job.status == 'ok' %}bg-emerald-700 text-white
+          {% elif job.status == 'error' %}bg-rose-700 text-white
+          {% elif job.status == 'cancelled' %}bg-slate-600 text-white
+          {% elif job.status == 'running' %}bg-sky-700 text-white
+          {% else %}bg-slate-700 text-slate-300{% endif %}">
+          {{ job.status }}
+        </span>
+        <span class="ml-2 text-slate-400">{{ job.kind }}</span>
+      {% else %}
+        <span class="ml-2 text-slate-400">queued…</span>
+      {% endif %}
+    </div>
+    {% if job and job.status in ['queued'] %}
+      <button hx-post="/jobs/{{ job_id }}/cancel" hx-target="closest div.card" hx-swap="outerHTML"
+              class="text-rose-400 text-xs">Cancel</button>
+    {% endif %}
+  </div>
+  {% if job and job.log_tail %}
+    <pre class="bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-300 overflow-auto max-h-64">{{ job.log_tail[-4000:] }}</pre>
+  {% endif %}
+</div>

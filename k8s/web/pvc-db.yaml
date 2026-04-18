@@ -1,0 +1,17 @@
+---
+# SQLite + APScheduler jobstore for the web service.
+# RWO local-path — the web pod is pinned to the node that first claimed this PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yt-sync-db-pvc
+  namespace: media
+  labels:
+    app: yt-sync-web
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi

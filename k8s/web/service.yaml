@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yt-sync-web
+  namespace: media
+  labels:
+    app: yt-sync-web
+spec:
+  type: ClusterIP
+  selector:
+    app: yt-sync-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

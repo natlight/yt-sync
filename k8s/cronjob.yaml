@@ -117,6 +117,10 @@ spec:
               image: ghcr.io/natlight/yt-sync:latest
               imagePullPolicy: Always
 
+              # The image's default ENTRYPOINT is the web service entrypoint.
+              # The CronJob overrides it to run the original sync.py flow.
+              command: ["/app/entrypoint.sh"]
+
               env:
                 - name: CONFIG_FILE
                   value: /config/sources.yaml

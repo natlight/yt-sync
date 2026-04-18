@@ -1,0 +1,29 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yt-sync-web
+  namespace: media
+  labels:
+    app: yt-sync-web
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # VPN-only middleware: whitelists WireGuard 10.8.0.0/24 + LAN 192.168.50.0/24.
+    traefik.ingress.kubernetes.io/router.middlewares: security-vpn-only@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - yt.ratermann.us
+      secretName: yt-sync-web-tls
+  rules:
+    - host: yt.ratermann.us
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: yt-sync-web
+                port:
+                  number: 80

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Downloads — yt-sync{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold text-white mb-4">Downloads</h1>
+
+<form class="card rounded-lg p-3 mb-4 grid grid-cols-1 md:grid-cols-5 gap-3"
+      hx-get="/downloads/table"
+      hx-target="#dl-table"
+      hx-trigger="change, keyup delay:300ms from:input[name='q']"
+      hx-swap="innerHTML">
+  <select name="type" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100">
+    <option value="">All types</option>
+    {% for t in ['channel', 'playlist', 'music'] %}
+      <option value="{{ t }}" {% if filter_type == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+  <select name="status" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100">
+    <option value="">All statuses</option>
+    {% for st in ['ok', 'skipped', 'error'] %}
+      <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
+    {% endfor %}
+  </select>
+  <select name="source_id" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100">
+    <option value="">All sources</option>
+    {% for s in sources %}
+      <option value="{{ s.id }}" {% if filter_source_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <input name="q" value="{{ filter_q }}" placeholder="search title or video id"
+         class="md:col-span-2 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100" />
+</form>
+
+<div id="dl-table">
+  {% include "downloads/_table.html" %}
+</div>
+{% endblock %}

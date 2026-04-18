@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Settings — yt-sync{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold text-white mb-4">Settings</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+  <section class="card rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Paths</h2>
+    <dl class="text-sm grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+      <dt class="text-slate-400">DB URL</dt><dd class="font-mono text-slate-200">{{ settings.db_url }}</dd>
+      <dt class="text-slate-400">Archive dir</dt><dd class="font-mono text-slate-200">{{ settings.archive_dir }}</dd>
+      <dt class="text-slate-400">Media root</dt><dd class="font-mono text-slate-200">{{ settings.media_root }}</dd>
+      <dt class="text-slate-400">Music root</dt><dd class="font-mono text-slate-200">{{ settings.music_root }}</dd>
+      <dt class="text-slate-400">Cookies file</dt><dd class="font-mono text-slate-200">{{ settings.cookies_file }}</dd>
+      <dt class="text-slate-400">Default max/run</dt><dd>{{ settings.default_max_downloads }}</dd>
+    </dl>
+  </section>
+
+  <section class="card rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Cookies</h2>
+    {% if cookies_exists %}
+      <p class="text-slate-300">File present, last modified <strong>{{ cookies_mtime | datetime }}</strong> ({{ cookies_age_days }} days ago).</p>
+      {% if cookies_age_days and cookies_age_days > 30 %}
+        <p class="mt-2 text-amber-400">⚠ More than 30 days old — consider re-exporting cookies for private playlists.</p>
+      {% endif %}
+    {% else %}
+      <p class="text-slate-400">No cookies.txt mounted. Public content only.</p>
+    {% endif %}
+  </section>
+
+  {% for label, usage in [('Archive', archive_usage), ('Media', media_usage), ('Music', music_usage)] %}
+    {% if usage %}
+    <section class="card rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-3">{{ label }} disk</h2>
+      <p class="text-slate-300 text-sm">
+        Used {{ '%.1f' | format(usage.used_gb) }} GB of {{ '%.1f' | format(usage.total_gb) }} GB
+        ({{ '%.1f' | format(usage.free_gb) }} GB free)
+      </p>
+      <div class="mt-2 w-full bg-slate-700 rounded h-2 overflow-hidden">
+        <div class="bg-emerald-500 h-2" style="width: {{ '%.1f' | format(usage.used_gb / usage.total_gb * 100) }}%"></div>
+      </div>
+    </section>
+    {% endif %}
+  {% endfor %}
+
+  <section class="card rounded-lg p-4 md:col-span-2">
+    <h2 class="text-lg font-semibold text-white mb-3">Import sources from sources.yaml</h2>
+    <p class="text-slate-400 text-sm mb-3">
+      Reads the YAML config (mounted at <code>/config/sources.yaml</code> in k8s, or <code>/data/sources.yaml</code> locally),
+      creates Source rows for any new entries. Imported sources start with <strong>enabled = off</strong> so they don't
+      collide with the existing CronJob.
+    </p>
+    <button hx-post="/settings/import-yaml" class="btn bg-emerald-600 hover:bg-emerald-500 text-white">Import now</button>
+  </section>
+
+</div>
+{% endblock %}

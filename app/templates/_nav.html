@@ -1,0 +1,20 @@
+<nav class="bg-slate-800 border-b border-slate-700">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-6">
+    <a href="/" class="text-lg font-semibold text-white">yt-sync</a>
+    <div class="flex gap-4 text-sm">
+      {% set links = [
+        ('dashboard', '/', 'Dashboard'),
+        ('sources', '/sources', 'Sources'),
+        ('downloads', '/downloads', 'Downloads'),
+        ('oneoff', '/oneoff', 'One-off'),
+        ('settings', '/settings', 'Settings'),
+      ] %}
+      {% for key, href, label in links %}
+        <a href="{{ href }}"
+           class="px-2 py-1 rounded {% if active_page == key %}bg-slate-700 text-white{% else %}text-slate-300 hover:text-white{% endif %}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+</nav>
