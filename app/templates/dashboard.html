@@ -53,10 +53,11 @@
 </div>
 
 <section class="card p-4 mt-4">
-  <h2 class="section-header">DOWNLOAD LOG // LAST 10 ENTRIES</h2>
+  <h2 class="section-header">DOWNLOAD LOG // LAST 100 ENTRIES</h2>
   {% if recent_downloads %}
+  <div style="max-height:480px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--green-dim) #000;">
   <table>
-    <thead>
+    <thead style="position:sticky; top:0; z-index:1;">
       <tr>
         <th style="width:130px;">TIMESTAMP</th>
         <th>VIDEO TITLE</th>
@@ -77,6 +78,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="muted" style="font-size:12px;">> NO DOWNLOAD RECORDS FOUND.</p>
   {% endif %}

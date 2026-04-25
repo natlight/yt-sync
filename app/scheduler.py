@@ -42,7 +42,7 @@ def upsert_source_job(source: Source) -> None:
             pass
         return
     try:
-        trigger = CronTrigger.from_crontab(source.cron)
+        trigger = CronTrigger.from_crontab(source.cron, timezone=settings.timezone)
     except ValueError:
         log.warning("Source %s has invalid cron %r — skipping", source.id, source.cron)
         try:
