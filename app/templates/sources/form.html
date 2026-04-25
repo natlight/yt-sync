@@ -39,19 +39,67 @@
              style="width:100%; padding:5px 8px;" />
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">CRON SCHEDULE (UTC)</label>
-        <input name="cron" value="{{ source.cron if source and source.cron else '' }}"
-               placeholder="0 3 * * *"
-               style="width:100%; padding:5px 8px; font-family:'Share Tech Mono',monospace;" />
-        <div class="muted" style="font-size:10px; margin-top:2px;">blank = manual trigger only</div>
+    <!-- CRON SCHEDULE BUILDER -->
+    <div>
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:8px;">CRON SCHEDULE (UTC)</label>
+
+      <!-- Frequency presets -->
+      <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" id="preset-manual"  class="btn" onclick="setCronMode('manual')" >[ MANUAL ]</button>
+        <button type="button" id="preset-hourly"  class="btn" onclick="setCronMode('hourly')" >[ HOURLY ]</button>
+        <button type="button" id="preset-daily"   class="btn" onclick="setCronMode('daily')"  >[ DAILY  ]</button>
+        <button type="button" id="preset-weekly"  class="btn" onclick="setCronMode('weekly')" >[ WEEKLY ]</button>
+        <button type="button" id="preset-custom"  class="btn" style="display:none;" onclick="setCronMode('custom')">[ CUSTOM ]</button>
       </div>
-      <div>
-        <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">MAX DOWNLOADS / RUN</label>
-        <input name="max_downloads" type="number" min="1" value="{{ source.max_downloads if source else 25 }}"
-               style="width:100%; padding:5px 8px;" />
+
+      <!-- Time + day pickers -->
+      <div id="cron-pickers" style="display:none; align-items:flex-end; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+        <div>
+          <label style="display:block; font-size:10px; letter-spacing:2px; color:var(--green-dim); margin-bottom:3px;">HOUR</label>
+          <select id="cron-hour" onchange="updateCronFromPickers()" style="padding:4px 6px; width:72px;">
+            {% for h in range(24) %}
+              <option value="{{ h }}">{{ '%02d' % h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="padding-bottom:6px; color:var(--green-dim); font-size:18px;">:</div>
+        <div>
+          <label style="display:block; font-size:10px; letter-spacing:2px; color:var(--green-dim); margin-bottom:3px;">MINUTE</label>
+          <select id="cron-minute" onchange="updateCronFromPickers()" style="padding:4px 6px; width:72px;">
+            {% for m in range(0, 60, 5) %}
+              <option value="{{ m }}">{{ '%02d' % m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="dow-wrapper" style="display:none;">
+          <label style="display:block; font-size:10px; letter-spacing:2px; color:var(--green-dim); margin-bottom:3px;">DAY</label>
+          <select id="cron-dow" onchange="updateCronFromPickers()" style="padding:4px 6px; width:120px;">
+            <option value="1">MONDAY</option>
+            <option value="2">TUESDAY</option>
+            <option value="3">WEDNESDAY</option>
+            <option value="4">THURSDAY</option>
+            <option value="5">FRIDAY</option>
+            <option value="6">SATURDAY</option>
+            <option value="0">SUNDAY</option>
+          </select>
+        </div>
       </div>
+
+      <!-- Raw cron input -->
+      <input name="cron" id="cron-input"
+             value="{{ source.cron if source and source.cron else '' }}"
+             placeholder="blank = manual trigger only"
+             oninput="onCronManualInput()"
+             style="width:100%; padding:5px 8px; font-family:'Share Tech Mono',monospace;" />
+
+      <!-- Human-readable description -->
+      <div id="cron-desc" style="font-size:11px; margin-top:4px; color:var(--cyan); letter-spacing:1px;"></div>
+    </div>
+
+    <div>
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:4px;">MAX DOWNLOADS / RUN</label>
+      <input name="max_downloads" type="number" min="1" value="{{ source.max_downloads if source else 25 }}"
+             style="width:160px; padding:5px 8px;" />
     </div>
 
     <div>
@@ -73,5 +121,160 @@
 
   </div>
 </form>
+
+<script>
+(function () {
+  // ── State ──────────────────────────────────────────────────────────────────
+  let cronMode = 'manual';
+
+  const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function detectMode(cron) {
+    if (!cron) return 'manual';
+    const p = cron.trim().split(/\s+/);
+    if (p.length !== 5) return 'custom';
+    const [m, h, dom, mon, dow] = p;
+    if (m === '0' && h === '*' && dom === '*' && mon === '*' && dow === '*') return 'hourly';
+    if (dom === '*' && mon === '*' && dow === '*' && /^\d+$/.test(h) && /^\d+$/.test(m)) return 'daily';
+    if (dom === '*' && mon === '*' && /^\d+$/.test(dow) && /^\d+$/.test(h) && /^\d+$/.test(m)) return 'weekly';
+    return 'custom';
+  }
+
+  function describe(cron) {
+    if (!cron) return 'MANUAL TRIGGER ONLY';
+    const p = cron.trim().split(/\s+/);
+    if (p.length !== 5) return 'CUSTOM SCHEDULE — ' + cron;
+    const [m, h, dom, mon, dow] = p;
+    if (m === '0' && h === '*' && dom === '*' && mon === '*' && dow === '*')
+      return 'EVERY HOUR AT :00 UTC';
+    if (dom === '*' && mon === '*' && dow === '*' && /^\d+$/.test(h) && /^\d+$/.test(m))
+      return 'DAILY AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' UTC';
+    if (dom === '*' && mon === '*' && /^\d+$/.test(dow) && /^\d+$/.test(h) && /^\d+$/.test(m))
+      return 'EVERY ' + (DAYS[+dow] || 'DAY ' + dow) + ' AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' UTC';
+    return 'SCHEDULE: ' + cron;
+  }
+
+  function snapToFive(n) {
+    return Math.round(n / 5) * 5 % 60;
+  }
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  function el(id) { return document.getElementById(id); }
+
+  // ── Picker visibility ──────────────────────────────────────────────────────
+  function applyPickerVisibility(mode) {
+    const pickers = el('cron-pickers');
+    const dowWrap = el('dow-wrapper');
+    if (mode === 'daily') {
+      pickers.style.display = 'flex';
+      dowWrap.style.display = 'none';
+    } else if (mode === 'weekly') {
+      pickers.style.display = 'flex';
+      dowWrap.style.display = '';
+    } else {
+      pickers.style.display = 'none';
+    }
+  }
+
+  // ── Active preset highlight ────────────────────────────────────────────────
+  function highlightPreset(mode) {
+    ['manual','hourly','daily','weekly','custom'].forEach(function(m) {
+      var btn = el('preset-' + m);
+      if (!btn) return;
+      btn.classList.toggle('btn-primary', m === mode);
+    });
+    // Show custom button only when mode is custom
+    var customBtn = el('preset-custom');
+    if (customBtn) customBtn.style.display = (mode === 'custom') ? '' : 'none';
+  }
+
+  // ── Public: set mode from preset buttons ───────────────────────────────────
+  window.setCronMode = function(mode) {
+    cronMode = mode;
+    highlightPreset(mode);
+    applyPickerVisibility(mode);
+
+    var input = el('cron-input');
+    if (mode === 'manual') {
+      input.value = '';
+    } else if (mode === 'hourly') {
+      input.value = '0 * * * *';
+    } else {
+      // daily / weekly: build from pickers
+      updateCronFromPickers();
+      return; // updateCronFromPickers calls updateDesc
+    }
+    updateDesc();
+  };
+
+  // ── Sync pickers → cron input ──────────────────────────────────────────────
+  window.updateCronFromPickers = function() {
+    var h = el('cron-hour').value;
+    var m = el('cron-minute').value;
+    var d = el('cron-dow').value;
+    var cron = '';
+    if (cronMode === 'daily')  cron = m + ' ' + h + ' * * *';
+    if (cronMode === 'weekly') cron = m + ' ' + h + ' * * ' + d;
+    el('cron-input').value = cron;
+    updateDesc();
+  };
+
+  // ── Sync cron input → pickers (on manual edit) ────────────────────────────
+  window.onCronManualInput = function() {
+    var val = el('cron-input').value.trim();
+    var mode = detectMode(val);
+    cronMode = mode;
+    highlightPreset(mode);
+    applyPickerVisibility(mode);
+
+    // Try to sync pickers from parsed value
+    if (mode === 'daily' || mode === 'weekly') {
+      var p = val.split(/\s+/);
+      var pm = +p[0], ph = +p[1], pd = (mode === 'weekly') ? +p[4] : 1;
+      // Only sync if values are clean numbers and minute is on 5-min boundary
+      if (!isNaN(ph) && ph >= 0 && ph <= 23) el('cron-hour').value = ph;
+      var snapped = snapToFive(pm);
+      el('cron-minute').value = snapped;
+      if (mode === 'weekly' && !isNaN(pd)) el('cron-dow').value = pd;
+    }
+
+    updateDesc();
+  };
+
+  function updateDesc() {
+    var val = el('cron-input').value.trim();
+    el('cron-desc').textContent = describe(val);
+  }
+
+  // ── Initialise on load ─────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    var input = el('cron-input');
+    var existing = input.value.trim();
+
+    if (!existing) {
+      // New source: default to daily at current UTC hour, :00
+      var now = new Date();
+      el('cron-hour').value   = now.getUTCHours();
+      el('cron-minute').value = snapToFive(now.getUTCMinutes());
+      setCronMode('daily');
+    } else {
+      // Editing: parse existing cron into pickers
+      cronMode = detectMode(existing);
+      var p = existing.split(/\s+/);
+      if (p.length === 5) {
+        var pm = +p[0], ph = +p[1], pd = +p[4];
+        if (!isNaN(ph) && ph >= 0 && ph <= 23) el('cron-hour').value = ph;
+        var snapped = snapToFive(pm);
+        el('cron-minute').value = snapped;
+        if (!isNaN(pd)) el('cron-dow').value = pd;
+      }
+      highlightPreset(cronMode);
+      applyPickerVisibility(cronMode);
+      updateDesc();
+    }
+  });
+}());
+</script>
 
 {% endblock %}
