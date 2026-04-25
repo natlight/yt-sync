@@ -292,7 +292,12 @@
     // Live clock in footer
     function tick() {
       const el = document.getElementById('sys-clock');
-      if (el) el.textContent = new Date().toUTCString().replace('GMT','UTC');
+      if (el) el.textContent = new Date().toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false, timeZoneName: 'short'
+      });
     }
     tick(); setInterval(tick, 1000);
   </script>

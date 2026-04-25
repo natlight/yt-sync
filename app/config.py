@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     music_root: Path = Path("/music")
     cookies_file: Path = Path("/secrets/cookies.txt")
     default_max_downloads: int = 25
+    timezone: str = "America/Chicago"
 
     @property
     def archive_files_dir(self) -> Path:

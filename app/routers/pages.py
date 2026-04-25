@@ -18,7 +18,7 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
         .order_by(desc(JobRun.created_at))
     ).all()
     recent_downloads = session.exec(
-        select(Download).order_by(desc(Download.started_at)).limit(10)
+        select(Download).order_by(desc(Download.started_at)).limit(100)
     ).all()
     upcoming = []
     for job in scheduler.get_jobs():

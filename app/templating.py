@@ -1,10 +1,15 @@
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi.templating import Jinja2Templates
 
+from app.config import settings
+
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+_TZ = ZoneInfo(settings.timezone)
 
 
 def _humantime(value: datetime | None) -> str:
@@ -28,7 +33,8 @@ def _datetime(value: datetime | None) -> str:
         return "—"
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return value.strftime("%Y-%m-%d %H:%M:%S UTC")
+    local = value.astimezone(_TZ)
+    return local.strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 templates.env.filters["humantime"] = _humantime

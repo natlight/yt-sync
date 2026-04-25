@@ -41,7 +41,7 @@
 
     <!-- CRON SCHEDULE BUILDER -->
     <div>
-      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:8px;">CRON SCHEDULE (UTC)</label>
+      <label style="display:block; font-size:11px; letter-spacing:2px; color:var(--green-dim); margin-bottom:8px;">CRON SCHEDULE (CT — AMERICA/CHICAGO)</label>
 
       <!-- Frequency presets -->
       <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
@@ -147,11 +147,11 @@
     if (p.length !== 5) return 'CUSTOM SCHEDULE — ' + cron;
     const [m, h, dom, mon, dow] = p;
     if (m === '0' && h === '*' && dom === '*' && mon === '*' && dow === '*')
-      return 'EVERY HOUR AT :00 UTC';
+      return 'EVERY HOUR AT :00 CT';
     if (dom === '*' && mon === '*' && dow === '*' && /^\d+$/.test(h) && /^\d+$/.test(m))
-      return 'DAILY AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' UTC';
+      return 'DAILY AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' CT';
     if (dom === '*' && mon === '*' && /^\d+$/.test(dow) && /^\d+$/.test(h) && /^\d+$/.test(m))
-      return 'EVERY ' + (DAYS[+dow] || 'DAY ' + dow) + ' AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' UTC';
+      return 'EVERY ' + (DAYS[+dow] || 'DAY ' + dow) + ' AT ' + h.padStart(2,'0') + ':' + m.padStart(2,'0') + ' CT';
     return 'SCHEDULE: ' + cron;
   }
 
@@ -253,10 +253,15 @@
     var existing = input.value.trim();
 
     if (!existing) {
-      // New source: default to daily at current UTC hour, :00
+      // New source: default to daily at current Chicago time hour
       var now = new Date();
-      el('cron-hour').value   = now.getUTCHours();
-      el('cron-minute').value = snapToFive(now.getUTCMinutes());
+      var ctParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Chicago', hour: 'numeric', minute: 'numeric', hour12: false
+      }).formatToParts(now);
+      var ctHour   = +ctParts.find(function(p) { return p.type === 'hour'; }).value;
+      var ctMinute = +ctParts.find(function(p) { return p.type === 'minute'; }).value;
+      el('cron-hour').value   = ctHour;
+      el('cron-minute').value = snapToFive(ctMinute);
       setCronMode('daily');
     } else {
       // Editing: parse existing cron into pickers
