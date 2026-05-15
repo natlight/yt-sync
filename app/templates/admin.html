@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}ADMIN // YT-SYNC{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  {# ── Page header ── #}
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="page-title">ADMIN TERMINAL</div>
+      <div class="muted" style="font-size:12px; margin-top:2px;">
+        DB: <span class="val">{{ db_url }}</span> &nbsp;|&nbsp;
+        TZ: <span class="val">{{ timezone }}</span>
+      </div>
+    </div>
+    <div class="flex gap-2 items-center">
+      {% if scheduler_running %}
+        <span style="color:var(--green); font-size:12px; text-shadow:0 0 8px var(--green);">● SCHEDULER ONLINE</span>
+      {% else %}
+        <span style="color:var(--red); font-size:12px; text-shadow:0 0 8px var(--red);">● SCHEDULER OFFLINE</span>
+      {% endif %}
+      <form method="post" action="/admin/resync">
+        <button type="submit" class="btn btn-primary" style="font-size:12px;">⟳ RESYNC JOBS</button>
+      </form>
+    </div>
+  </div>
+
+  {% if resync_done is defined and resync_done %}
+  <div style="border:1px solid var(--green); background:var(--green-dark); padding:8px 12px; font-size:13px;">
+    ✓ Scheduler re-synced from database.
+  </div>
+  {% endif %}
+
+  {% if missing_jobs %}
+  <div style="border:1px solid var(--amber); background:#1a1000; padding:8px 12px; font-size:12px;">
+    <span class="warn">⚠ SCHEDULER DRIFT DETECTED</span> — {{ missing_jobs|length }} source(s) are enabled+cron but missing from the live scheduler:
+    {% for s in missing_jobs %}
+      <span class="val">{{ s.name }}</span>{% if not loop.last %},{% endif %}
+    {% endfor %}
+    — click RESYNC JOBS to fix.
+  </div>
+  {% endif %}
+
+  {# ── Table counts ── #}
+  {% if table_counts %}
+  <div class="card p-4">
+    <div class="section-header">DATABASE TABLES</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap;">
+      {% for tbl, cnt in table_counts.items() %}
+      <div>
+        <div class="dim" style="font-size:11px; letter-spacing:1px;">{{ tbl.upper() }}</div>
+        <div class="val" style="font-size:22px; font-family:'VT323',monospace;">{{ cnt }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Live in-memory scheduler jobs ── #}
+  <div class="card p-4">
+    <div class="section-header">LIVE SCHEDULER JOBS ({{ live_jobs|length }})</div>
+    {% if live_jobs %}
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>JOB ID</th>
+            <th>NAME</th>
+            <th>TRIGGER</th>
+            <th>NEXT RUN</th>
+            <th>FUNC</th>
+            <th>ARGS</th>
+            <th>MAX INST</th>
+            <th>COALESCE</th>
+            <th>MISFIRE</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for j in live_jobs %}
+          <tr>
+            <td class="dim" style="font-size:11px;">{{ j.id }}</td>
+            <td class="val">{{ j.name }}</td>
+            <td style="font-size:11px; color:var(--cyan);">{{ j.trigger }}</td>
+            <td style="font-size:12px; {% if j.next_run_time == 'paused' %}color:var(--amber);{% else %}color:var(--green);{% endif %}">
+              {{ j.next_run_time }}
+            </td>
+            <td class="dim" style="font-size:11px;">{{ j.func }}</td>
+            <td class="dim" style="font-size:11px;">{{ j.args }}</td>
+            <td class="dim" style="font-size:11px;">{{ j.max_instances }}</td>
+            <td class="dim" style="font-size:11px;">{{ j.coalesce }}</td>
+            <td class="dim" style="font-size:11px;">{{ j.misfire_grace_time }}s</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="warn">No jobs in live scheduler.</div>
+    {% endif %}
+  </div>
+
+  {# ── Raw apscheduler_jobs DB table ── #}
+  <div class="card p-4">
+    <div class="section-header">RAW APSCHEDULER_JOBS TABLE ({{ raw_jobs|length }})</div>
+    {% if raw_jobs %}
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>JOB ID</th>
+            <th>NAME</th>
+            <th>NEXT RUN TIME (UTC)</th>
+            <th>STATE BYTES</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for j in raw_jobs %}
+          <tr>
+            <td class="dim" style="font-size:11px;">{{ j.id }}</td>
+            <td class="val">{{ j.name }}</td>
+            <td style="font-size:12px; color:var(--green);">{{ j.next_run_time or "—" }}</td>
+            <td class="dim" style="font-size:11px;">{{ j.job_state_len }} B</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="muted">No rows in apscheduler_jobs.</div>
+    {% endif %}
+  </div>
+
+  {# ── Sources vs scheduler state ── #}
+  <div class="card p-4">
+    <div class="section-header">SOURCES SCHEDULE STATE ({{ sources|length }})</div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>NAME</th>
+            <th>TYPE</th>
+            <th>ENABLED</th>
+            <th>CRON</th>
+            <th>LAST RUN</th>
+            <th>LAST STATUS</th>
+            <th>IN SCHEDULER</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set live_ids = live_jobs | map(attribute='id') | list %}
+          {% for s in sources %}
+          {% set job_key = "source-" ~ s.id %}
+          {% set in_sched = job_key in live_ids %}
+          <tr>
+            <td class="dim" style="font-size:11px;">{{ s.id }}</td>
+            <td class="val">{{ s.name }}</td>
+            <td class="type-{{ s.type.value }}">{{ s.type.value }}</td>
+            <td>
+              {% if s.enabled %}
+                <span style="color:var(--green);">ON</span>
+              {% else %}
+                <span class="dim">OFF</span>
+              {% endif %}
+            </td>
+            <td style="font-size:11px; color:var(--cyan);">{{ s.cron or "—" }}</td>
+            <td class="dim" style="font-size:11px;">
+              {% if s.last_run_at %}{{ s.last_run_at.strftime("%Y-%m-%d %H:%M") }}{% else %}never{% endif %}
+            </td>
+            <td>
+              {% if s.last_status == "ok" %}<span class="status-ok">OK</span>
+              {% elif s.last_status == "error" %}<span class="status-err">ERR</span>
+              {% else %}<span class="dim">—</span>{% endif %}
+            </td>
+            <td>
+              {% if s.enabled and s.cron %}
+                {% if in_sched %}
+                  <span style="color:var(--green);">✓ ACTIVE</span>
+                {% else %}
+                  <span style="color:var(--red); text-shadow:0 0 6px var(--red);">✗ MISSING</span>
+                {% endif %}
+              {% else %}
+                <span class="dim">n/a</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Recent job runs ── #}
+  <div class="card p-4">
+    <div class="section-header">RECENT JOB RUNS (last {{ recent_runs|length }})</div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>KIND</th>
+            <th>SOURCE</th>
+            <th>STATUS</th>
+            <th>CREATED</th>
+            <th>STARTED</th>
+            <th>FINISHED</th>
+            <th>EXIT</th>
+            <th>LOG</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in recent_runs %}
+          <tr>
+            <td class="dim" style="font-size:11px;">{{ run.id }}</td>
+            <td style="font-size:11px; {% if run.kind == 'scheduled' %}color:var(--cyan);{% elif run.kind == 'manual' %}color:var(--amber);{% else %}color:#888;{% endif %}">
+              {{ run.kind }}
+            </td>
+            <td class="val" style="font-size:12px;">
+              {% if run.source_id and run.source_id in source_map %}
+                {{ source_map[run.source_id] }}
+              {% elif run.oneoff_url %}
+                <span class="dim">one-off</span>
+              {% else %}
+                <span class="dim">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if run.status == "ok" %}<span class="status-ok">OK</span>
+              {% elif run.status == "error" %}<span class="status-err">ERR</span>
+              {% elif run.status == "running" %}<span class="status-run">RUN</span>
+              {% elif run.status == "queued" %}<span style="color:var(--amber);">QUE</span>
+              {% else %}<span class="dim">{{ run.status }}</span>{% endif %}
+            </td>
+            <td class="dim" style="font-size:11px;">{{ run.created_at.strftime("%m-%d %H:%M") }}</td>
+            <td class="dim" style="font-size:11px;">
+              {% if run.started_at %}{{ run.started_at.strftime("%m-%d %H:%M") }}{% else %}—{% endif %}
+            </td>
+            <td class="dim" style="font-size:11px;">
+              {% if run.finished_at %}{{ run.finished_at.strftime("%m-%d %H:%M") }}{% else %}—{% endif %}
+            </td>
+            <td class="dim" style="font-size:11px;">{{ run.exit_code if run.exit_code is not none else "—" }}</td>
+            <td>
+              {% if run.log_tail %}
+              <button class="btn btn-secondary" style="font-size:10px; padding:2px 6px;"
+                onclick="toggleLog('log-{{ run.id }}')">VIEW</button>
+              {% else %}
+                <span class="dim">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% if run.log_tail %}
+          <tr id="log-{{ run.id }}" style="display:none;">
+            <td colspan="9" style="padding:0 8px 8px;">
+              <pre style="max-height:300px; overflow:auto; font-size:11px; white-space:pre-wrap; word-break:break-all;">{{ run.log_tail }}</pre>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleLog(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+{% endblock %}

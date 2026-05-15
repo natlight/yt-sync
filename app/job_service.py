@@ -266,7 +266,7 @@ def cancel_job(job_id: int) -> bool:
         return False
 
 
-# Module-level helper so APScheduler can dispatch by source id without
-# pickling closures.
-def run_source_now(source_id: int) -> None:
+# Async so APScheduler's AsyncIOExecutor runs it on the event loop (not in a
+# thread pool) — required for _spawn / loop.create_task to work correctly.
+async def run_source_now(source_id: int) -> None:
     queue_source_run(source_id, kind=JobKind.scheduled)

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.db import init_db
-from app.routers import downloads, jobs, oneoff, pages
+from app.routers import admin, downloads, jobs, oneoff, pages
 from app.routers import settings as settings_router
 from app.routers import sources
 from app.scheduler import shutdown as scheduler_shutdown
@@ -47,3 +47,4 @@ app.include_router(downloads.router)
 app.include_router(jobs.router)
 app.include_router(oneoff.router)
 app.include_router(settings_router.router)
+app.include_router(admin.router)
