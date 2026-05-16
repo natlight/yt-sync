@@ -37,7 +37,7 @@ def _raw_apscheduler_jobs() -> list[dict[str, Any]]:
         con = sqlite3.connect(path)
         con.row_factory = sqlite3.Row
         rows = con.execute(
-            "SELECT id, name, next_run_time, job_state FROM apscheduler_jobs ORDER BY next_run_time"
+            "SELECT id, next_run_time, job_state FROM apscheduler_jobs ORDER BY next_run_time"
         ).fetchall()
         con.close()
         result = []
@@ -53,7 +53,7 @@ def _raw_apscheduler_jobs() -> list[dict[str, Any]]:
             result.append(
                 {
                     "id": r["id"],
-                    "name": r["name"],
+                    "name": r["id"],
                     "next_run_time": nrt,
                     "job_state_len": len(r["job_state"]) if r["job_state"] else 0,
                 }
