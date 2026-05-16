@@ -4,12 +4,30 @@ from sqlmodel import Session, desc, select
 
 from app import job_service
 from app.db import get_session
-from app.models import JobRun, JobStatus
+from app.models import JobRun, JobStatus, Source
 from app.templating import templates
 
 router = APIRouter(prefix="/jobs")
 
 TERMINAL = {JobStatus.ok.value, JobStatus.error.value, JobStatus.cancelled.value}
+
+
+@router.get("/recent", response_class=HTMLResponse)
+def recent(request: Request, session: Session = Depends(get_session)):
+    rows = session.exec(
+        select(JobRun)
+        .where(JobRun.status.in_([JobStatus.ok.value, JobStatus.error.value]))  # type: ignore[union-attr]
+        .order_by(desc(JobRun.finished_at))
+        .limit(10)
+    ).all()
+    source_ids = {r.source_id for r in rows if r.source_id is not None}
+    source_map: dict[int, str] = {}
+    if source_ids:
+        for src in session.exec(select(Source).where(Source.id.in_(list(source_ids)))):  # type: ignore[arg-type]
+            source_map[src.id] = src.name
+    return templates.TemplateResponse(
+        request, "partials/recent_jobs.html", {"rows": rows, "source_map": source_map}
+    )
 
 
 @router.get("/active", response_class=HTMLResponse)

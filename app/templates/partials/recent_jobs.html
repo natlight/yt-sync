@@ -1,0 +1,56 @@
+{% if rows %}
+<table>
+  <thead>
+    <tr>
+      <th style="width:50px;">#</th>
+      <th style="width:80px;">STATUS</th>
+      <th>SOURCE</th>
+      <th style="width:80px;">KIND</th>
+      <th style="width:70px;">EXIT</th>
+      <th style="width:90px;">FINISHED</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for j in rows %}
+    {% set is_warn = j.status == 'ok' and j.exit_code not in [0, 101, none] %}
+    <tr style="cursor:pointer;"
+        hx-get="/jobs/{{ j.id }}/status"
+        hx-target="#recent-job-detail"
+        hx-swap="innerHTML">
+      <td class="muted" style="font-size:12px;">#{{ j.id }}</td>
+      <td>
+        {% if is_warn %}
+          <span class="warn">[ WARN ]</span>
+        {% elif j.status == 'ok' %}
+          <span class="status-ok">[ OK ]</span>
+        {% else %}
+          <span class="status-err">[ ERR ]</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        {% if j.source_id and j.source_id in source_map %}
+          {{ source_map[j.source_id] }}
+        {% elif j.oneoff_url %}
+          <span class="muted">oneoff:</span> {{ j.oneoff_url[:40] }}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td style="font-size:11px; color:var(--green-dim);">{{ j.kind }}</td>
+      <td style="font-size:12px;">
+        {% if j.exit_code is not none %}
+          <span class="{% if j.exit_code == 0 %}muted{% elif j.exit_code == 101 %}muted{% else %}warn{% endif %}">
+            {{ j.exit_code }}
+          </span>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td class="muted" style="font-size:11px; white-space:nowrap;">{{ j.finished_at | humantime }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted" style="font-size:12px;">> NO COMPLETED JOBS YET.</p>
+{% endif %}
